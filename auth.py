@@ -1,12 +1,14 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask_login.utils import login_required, login_user, logout_user , current_user
+from sqlalchemy.sql.expression import true
 from .models import User
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
-from flask_login import login_user, login_required, logout_user, current_user
+
 
 auth = Blueprint('auth', __name__)
 
-@auth.route('/login', methods=['GET', 'POST'])
+@auth.route('/login', methods=['GET', 'POST','PUT','PATCH','DELETE','HEAD'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -15,12 +17,22 @@ def login():
         if user:
             if check_password_hash(user.password, password):
                 flash('Logged in successfully!', category='success')
+                # Ghi nhớ cookie người dùng mới sau khi session hết hạn
+                login_user(user , remember=True)
                 return redirect(url_for('views.home'))
             else:
                 flash('Incorrect password , try again', category='error')
         else:
             flash('Email does not exist.', category='error')
-    return render_template("login.html" , boolean=True)
+    return render_template("login.html" , user=current_user)
+
+
+@auth.route('/logout')
+@login_required
+def logout():
+    logout_user
+    return redirect(url_for('auth.login'))
+
 
 @auth.route('/sign-up', methods=['GET', 'POST'])
 def sign_up():
@@ -43,12 +55,12 @@ def sign_up():
         else:
             new_user = User(email=email, first_name=first_name, password=generate_password_hash(
                 password1, method='sha256'))
+            # Session kết nối tới database  và tiến hành thao tác
             db.session.add(new_user)
             db.session.commit()
+            # Ghi nhớ cookie ngườu dùng mới sau khi session hết hạn
+            login_user(new_user, remember=true)
             flash('Account created', category='success')
-        return redirect(url_for('views.home'))
-    return render_template("sign_up.html")
+        return redirect(url_for('auth.login'))
+    return render_template("sign_up.html", user=current_user)
 
-@auth.route('/logout')
-def logout():
-    return "<p>Logout</p>"
